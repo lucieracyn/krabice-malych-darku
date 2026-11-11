@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "krabice-malych-darku",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-10-01",
+  "assets": { "directory": "./public", "binding": "ASSETS" },
+  // Databáze a úložiště médií se při prvním nasazení vytvoří samy.
+  "d1_databases": [{ "binding": "DB", "database_name": "krabice-malych-darku" }],
+  "kv_namespaces": [{ "binding": "MEDIA" }],
+  // Každou hodinu: půlnoční upozornění, doutnání, shořelé dopisy, nedělní souhrn.
+  "triggers": { "crons": ["0 * * * *"] }
+}

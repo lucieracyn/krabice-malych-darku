@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Krabice malých dárků</title>
+<meta name="theme-color" content="#8798a6">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Krabice">
+<meta name="robots" content="noindex, nofollow">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icons/icon-180.png">
+<link rel="icon" href="/icons/icon-192.png">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body data-tone="light">
+<div id="sky" data-kind="cloudy" data-tod="day">
+  <div class="orb"></div>
+  <div class="clouds"></div>
+  <canvas id="sky-canvas"></canvas>
+  <div class="fog"></div>
+</div>
+<div id="weather-chip"></div>
+<main id="view"></main>
+<nav id="tabs">
+  <button data-tab="home" class="on"><svg viewBox="0 0 24 24"><path d="M3 9h18v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1zM2 5h20v4H2zM12 5v16M12 5c-2-4-6-3-5-1s3 1 5 1zm0 0c2-4 6-3 5-1s-3 1-5 1z"/></svg><span>Krabice</span></button>
+  <button data-tab="calendar"><svg viewBox="0 0 24 24"><path d="M4 5h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM3 10h18M8 3v4M16 3v4"/></svg><span>Kalendář</span></button>
+  <button data-tab="wishlist"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.600-7 10-7 10z"/></svg><span>Přání</span></button>
+</nav>
+<div id="sheet" hidden><button id="sheet-close" aria-label="Zavřít">×</button><div id="sheet-scroll"><article id="sheet-body"></article></div></div>
+<div id="overlay" hidden></div>
+<div id="toast" hidden></div>
+<script type="module" src="/js/app.js"></script>
+</body>
+</html>

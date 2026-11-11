@@ -1,0 +1,44 @@
+:root { --bg: #f6f1e7; --card: #fffdf8; --text: #33271f; --muted: #7d6c60; --line: #e3d9c8; --accent: #a23b45; --ok: #4f7a3a; --warn: #b7791f; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+#app { max-width: 760px; margin: 0 auto; padding: 16px 16px 80px; }
+h1 { font: 500 26px/1.2 Georgia, serif; margin: 8px 0 4px; }
+h2 { font: 600 18px/1.3 inherit; margin: 26px 0 10px; }
+p { margin: 0 0 10px; }
+.muted { color: var(--muted); font-size: 14px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin-bottom: 12px; }
+nav { display: flex; gap: 6px; margin: 14px 0 18px; position: sticky; top: 0; background: var(--bg); padding: 8px 0; z-index: 2; }
+nav button { flex: 1; }
+button, .btn { font: 600 15px inherit; border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 10px; padding: 10px 14px; cursor: pointer; text-decoration: none; display: inline-block; text-align: center; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.on { background: var(--text); border-color: var(--text); color: #fff; }
+button.danger { color: var(--accent); }
+button.sm { padding: 6px 10px; font-size: 13px; }
+button:disabled { opacity: .5; }
+label { display: block; font-weight: 600; font-size: 14px; margin: 14px 0 5px; }
+label small { font-weight: 400; color: var(--muted); display: block; }
+input[type=text], input[type=password], input[type=email], input[type=url], input[type=number], input[type=datetime-local], select, textarea {
+  width: 100%; font: inherit; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--text); }
+textarea { min-height: 220px; resize: vertical; line-height: 1.55; }
+textarea.short { min-height: 70px; }
+.check { display: flex; gap: 10px; align-items: center; font-weight: 400; }
+.check input { width: 20px; height: 20px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.week { display: grid; grid-template-columns: 44px 1fr auto; gap: 12px; align-items: center; width: 100%; text-align: left; padding: 12px; margin-bottom: 8px; border-radius: 12px; }
+.week .n { font: 500 20px Georgia, serif; text-align: center; }
+.week .t { font-weight: 600; }
+.week .d { font-weight: 400; font-size: 13px; color: var(--muted); }
+.week.now { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.chip { font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; background: #eee6d8; color: var(--muted); white-space: nowrap; }
+.chip.ok { background: #e2ecd6; color: var(--ok); } .chip.warn { background: #f8ecd0; color: var(--warn); } .chip.bad { background: #f5dcdc; color: var(--accent); }
+.media { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-top: 1px solid var(--line); }
+.media img { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; flex: none; background: #eee; }
+.media .ph { width: 72px; height: 72px; border-radius: 8px; background: #eee6d8; display: grid; place-items: center; flex: none; font-size: 24px; }
+.media > div { flex: 1; }
+.item { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-top: 10px; }
+.banner { background: #f8ecd0; border: 1px solid #e6cf95; color: #6b4a0f; border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; font-size: 14px; }
+.resp { border-top: 1px solid var(--line); padding: 8px 0; font-size: 15px; }
+.resp:first-child { border-top: 0; }
+#toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--text); color: #fff; padding: 12px 18px; border-radius: 12px; font-size: 14px; max-width: 90vw; z-index: 9; }
+.sticky { position: sticky; bottom: 0; background: var(--bg); padding: 12px 0; margin-top: 16px; border-top: 1px solid var(--line); }
