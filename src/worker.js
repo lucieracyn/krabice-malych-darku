@@ -11,6 +11,7 @@ const RHYTHM = ['Dopis', 'Vzpomínka', 'Hra nebo otázka', 'Něco do reálu (poz
 const TYPE_NAMES = {
   dopis: 'Dopis', vzpominka: 'Vzpomínka', pozvanka: 'Pozvánka', vyzva: 'Výzva', kupon: 'Kupón',
   otazka: 'Otázka', stopa: 'Stopa', pisnicka: 'Písnička', vyber: 'Výběr do wishlistu',
+  kviz: 'Kvíz', pexeso: 'Pexeso', puzzle: 'Puzzle', los: 'Stírací los', oblekani: 'Oblékání',
 };
 
 // ---------- čas (všechno se řídí českým časem) ----------

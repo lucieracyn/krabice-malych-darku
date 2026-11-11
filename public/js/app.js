@@ -1,5 +1,6 @@
 import { envelopeHtml, envelopeIcon, ashIcon, flaskIcon, boxHtml } from './envelope.js';
 import { startWeather } from './weather.js';
+import { GAME_TYPES, usesPhotos, gameHtml, mountGame } from './games.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -10,6 +11,7 @@ const REACTIONS = ['❤️', '🥹', '😂', '😘', '🔥', '👏'];
 const TYPE_NAMES = {
   dopis: 'Dopis', vzpominka: 'Vzpomínka', pozvanka: 'Pozvánka', vyzva: 'Výzva', kupon: 'Kupón',
   otazka: 'Otázka', stopa: 'Stopa', pisnicka: 'Písnička', vyber: 'Výběr pro tebe',
+  kviz: 'Kvíz', pexeso: 'Pexeso', puzzle: 'Puzzle', los: 'Stírací los', oblekani: 'Oblékání',
 };
 
 let S = null; // stav ze serveru
@@ -303,7 +305,7 @@ function typeBlock(L, wished) {
           <div class="row">${it.link ? `<a class="btn ghost sm" href="${esc(it.link)}" target="_blank" rel="noopener">Poslechnout</a>` : ''}
           <button class="btn sm ${on ? 'done' : 'primary'}" data-wish="${i}" ${on ? 'disabled' : ''}>${on ? 'Ve wishlistu ✓' : '♡ Do wishlistu'}</button></div></div></div>`;
       }).join('')}</div>`;
-    default: return '';
+    default: return gameHtml(L);
   }
 }
 
@@ -315,6 +317,8 @@ async function showSheet(L, { fresh = false, preview = false } = {}) {
     try { for (const it of (await api('wishlist')).items) if (it.week === L.week) wished.add(it.title); } catch {}
   }
   const photosFirst = L.type === 'vzpominka';
+  const isGame = GAME_TYPES.includes(L.type);
+  const media = usesPhotos(L.type) ? (b.media || []).filter((m) => m.kind !== 'image') : b.media;
   const meta = [b.memWhen, b.memWhere].filter(Boolean).join(' · ');
   const isCurrent = S && L.week === S.current && S.next;
   const sheet = $('#sheet'), body = $('#sheet-body');
@@ -323,10 +327,10 @@ async function showSheet(L, { fresh = false, preview = false } = {}) {
     <p class="eyebrow">${esc(TYPE_NAMES[L.type] || 'Dopis')} · č. ${L.week}${L.revived ? ' · vzkříšený' : L.scorched ? ' · očouzený' : ''}</p>
     ${L.title ? `<h1>${esc(L.title)}</h1>` : ''}
     ${meta ? `<p class="meta">${esc(meta)}</p>` : ''}
-    ${photosFirst ? mediaHtml(b.media) : ''}
+    ${photosFirst ? mediaHtml(media) : ''}
     <div class="text">${textHtml(b.text)}</div>
     ${b.signature ? `<p class="signature">${esc(b.signature)}</p>` : ''}
-    ${photosFirst ? '' : mediaHtml(b.media)}
+    ${photosFirst ? '' : mediaHtml(media)}
     ${typeBlock(L, wished)}
     <div id="end-mark"></div>
     <section class="endzone">
@@ -349,11 +353,19 @@ async function showSheet(L, { fresh = false, preview = false } = {}) {
     io.disconnect();
     setTimeout(() => end.classList.add('show'), Math.max(500, (fresh ? 4000 : 800) - (Date.now() - opened)));
   }, { root: $('#sheet-scroll'), threshold: 0.9 });
-  io.observe($('#end-mark', body));
+  if (!isGame) io.observe($('#end-mark', body));
+  // U her se reakce ukážou až po dohrání.
+  setTimeout(() => mountGame(body, L, {
+    done: () => setTimeout(() => end.classList.add('show'), 900),
+    record: (value) => {
+      L.actions.push(value);
+      if (!preview) api('action', { method: 'POST', body: { week: L.week, value } }).catch((e) => toast(e.message));
+    },
+  }), fresh ? 650 : 400);
 
   body.onclick = async (e) => {
     const t = e.target.closest('button');
-    if (!t) return;
+    if (!t || !(t.dataset.react || t.dataset.action || t.dataset.wish)) return;
     if (preview) return toast('V náhledu se nic neukládá.');
     try {
       if (t.dataset.react) {
@@ -550,6 +562,7 @@ async function runPreview() {
   const stav = params.get('stav');
   const L = await api(`letter/${PREVIEW}`);
   L.scorched = stav === 'doutna';
+  L.actions = []; L.reactions = []; L.notes = [];
   const v = $('#view');
   const play = () => {
     v.innerHTML = `<section class="home"><header class="hero"><p class="eyebrow">Náhled · dopis č. ${PREVIEW}</p><h1>${L.scorched ? 'Dopis začíná doutnat' : 'Něco na tebe čeká'}</h1></header>

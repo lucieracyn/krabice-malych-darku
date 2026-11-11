@@ -5,6 +5,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const TYPES = {
   dopis: 'Dopis', vzpominka: 'Vzpomínka (fotka s příběhem)', pozvanka: 'Pozvánka na rande', vyzva: 'Výzva na týden', kupon: 'Kupón',
   otazka: 'Otázka pro něj', stopa: 'Stopa ke schovanému dárku', pisnicka: 'Písnička', vyber: 'Výběr do wishlistu (desky, knihy…)',
+  kviz: 'Hra: kvíz', pexeso: 'Hra: pexeso z fotek', puzzle: 'Hra: puzzle z fotky', los: 'Hra: stírací los', oblekani: 'Hra: oblékání (vyjde z ní pozvánka)',
 };
 const STATUS = {
   future: ['čeká na svůj den', ''], empty: ['nic se neposlalo', 'bad'], fresh: ['doručeno, neotevřeno', 'warn'], smoldering: ['doutná', 'warn'],
@@ -118,6 +119,31 @@ function typeFields() {
       <div class="row">${it.media ? `<img src="/api/media/${it.media}" style="width:56px;height:56px;border-radius:6px;object-fit:cover">` : ''}
       <button type="button" class="sm" data-cover="${i}">${it.media ? 'Změnit obal' : 'Přidat obal'}</button><button type="button" class="sm danger" data-rmitem="${i}">Odebrat</button></div></div>`).join('')}</div>
     <div class="row"><button type="button" id="additem">+ Přidat položku</button></div>`;
+  if (t === 'kviz') return `${text('Úvod ke kvízu')}${field('after', 'Věta po dohrání', { ph: 'Vidíš, že si pamatuješ víc než já.' })}<h2>Otázky</h2><p class="muted">Vyplň aspoň dvě možnosti a vyber správnou.</p>
+    <div id="qs">${(E.body.questions || []).map((q, i) => `<div class="item"><label>Otázka ${i + 1}</label><input type="text" data-q="${i}" data-k="q" value="${esc(q.q)}">
+      <div class="grid2">${[0, 1, 2, 3].map((k) => `<div><label>Možnost ${'ABCD'[k]}</label><input type="text" data-q="${i}" data-opt="${k}" value="${esc(q.options?.[k])}"></div>`).join('')}</div>
+      <div class="grid2"><div><label>Správně je</label><select data-q="${i}" data-k="correct">${[0, 1, 2, 3].map((k) => `<option value="${k}" ${+q.correct === k ? 'selected' : ''}>${'ABCD'[k]}</option>`).join('')}</select></div>
+      <div><label>Komentář po odpovědi</label><input type="text" data-q="${i}" data-k="comment" value="${esc(q.comment)}"></div></div>
+      <div class="row"><button type="button" class="sm danger" data-rmq="${i}">Odebrat otázku</button></div></div>`).join('')}</div>
+    <div class="row"><button type="button" id="addq">+ Přidat otázku</button></div>`;
+  if (t === 'pexeso') return `${text('Úvod k pexesu', 'Níž nahraj 2 až 8 fotek. Z každé vznikne jedna dvojice.')}${sig}`;
+  if (t === 'puzzle') return `${text('Úvod k puzzle', 'Použije se první nahraná fotka. Její popisek se ukáže po složení.')}
+    <label>Počet dílků</label><select data-b="grid">${[3, 4, 5].map((n) => `<option value="${n}" ${+E.body.grid === n ? 'selected' : ''}>${n} × ${n}</option>`).join('')}</select>${sig}`;
+  if (t === 'los') return `${text('Úvod k losu')}${field('prize', 'Co je pod stírací vrstvou', { ph: 'Vyhráváš masáž zad' })}<p class="muted">Pod vrstvou se ukáže i první nahraná fotka, pokud nějakou přidáš.</p>${sig}`;
+  if (t === 'oblekani') {
+    const o = (E.body.outcomes ||= {}), lk = (E.body.looks ||= {});
+    const out = (k, label, ph) => `<div class="item"><b>${label}</b><label>Nadpis pozvánky</label><input type="text" data-out="${k}" data-k="title" value="${esc(o[k]?.title)}" placeholder="${ph}">
+      <label>Text</label><input type="text" data-out="${k}" data-k="text" value="${esc(o[k]?.text)}">
+      <div class="grid2"><div><label>Kdy</label><input type="text" data-out="${k}" data-k="when" value="${esc(o[k]?.when)}" placeholder="v sobotu večer"></div><div><label>Kde</label><input type="text" data-out="${k}" data-k="where" value="${esc(o[k]?.where)}"></div></div></div>`;
+    const look = (w, label) => `<div class="item"><b>${label}</b><div class="grid2"><div><label>Barva vlasů</label><input type="color" data-look="${w}" data-k="hair" value="${esc(lk[w]?.hair || (w === 'on' ? '#4a3426' : '#7a4a2a'))}"></div>
+      <div><label>Barva pleti</label><input type="color" data-look="${w}" data-k="skin" value="${esc(lk[w]?.skin || '#f0c9a8')}"></div></div>
+      <label class="check"><input type="checkbox" data-look="${w}" data-k="glasses" ${lk[w]?.glasses ? 'checked' : ''}> Brýle</label>
+      ${w === 'on' ? `<label class="check"><input type="checkbox" data-look="on" data-k="beard" ${lk.on?.beard ? 'checked' : ''}> Vousy</label>` : `<label class="check"><input type="checkbox" data-look="ona" data-k="long" ${lk.ona?.long === false ? '' : 'checked'}> Dlouhé vlasy</label>`}</div>`;
+    return `${text('Úvod ke hře', 'Oblékne oba avatary. Když vybere pro oba totéž, dostane příslušnou pozvánku; když každému něco jiného, dostane čtvrtou.')}${sig}
+      <h2>Jak vypadáme</h2>${look('on', 'On')}${look('ona', 'Ty')}
+      <h2>Pozvánky</h2><p class="muted">Co nevyplníš, doplní se obecným textem.</p>
+      ${out('formal', 'Sako a šaty', 'Jdeme do divadla')}${out('outdoor', 'Kraťasy a pohorky', 'Jedeme na hory')}${out('home', 'Tepláky', 'Zůstáváme doma')}${out('mix', 'Každý něco jiného', 'To bude zajímavé rande')}`;
+  }
   return `${text('Text dopisu')}${sig}`;
 }
 function renderEditor() {
@@ -149,6 +175,13 @@ function renderEditor() {
     f.querySelectorAll('[data-b]').forEach((i) => (E.body[i.dataset.b] = i.value.trim()));
     f.querySelectorAll('[data-cap]').forEach((i) => (E.body.media[+i.dataset.cap].caption = i.value.trim()));
     f.querySelectorAll('[data-i]').forEach((i) => (E.body.items[+i.dataset.i][i.dataset.k] = i.value.trim()));
+    f.querySelectorAll('[data-q]').forEach((i) => {
+      const q = E.body.questions[+i.dataset.q];
+      if (i.dataset.opt !== undefined) (q.options ||= [])[+i.dataset.opt] = i.value.trim();
+      else q[i.dataset.k] = i.dataset.k === 'correct' ? +i.value : i.value.trim();
+    });
+    f.querySelectorAll('[data-out]').forEach((i) => (((E.body.outcomes ||= {})[i.dataset.out] ||= {})[i.dataset.k] = i.value.trim()));
+    f.querySelectorAll('[data-look]').forEach((i) => (((E.body.looks ||= {})[i.dataset.look] ||= {})[i.dataset.k] = i.type === 'checkbox' ? i.checked : i.value));
   };
   const save = async () => {
     collect();
@@ -185,6 +218,8 @@ function renderEditor() {
     else if (d.up !== undefined) { collect(); const i = +d.up; [E.body.media[i - 1], E.body.media[i]] = [E.body.media[i], E.body.media[i - 1]]; renderEditor(); }
     else if (d.rmitem !== undefined) { collect(); E.body.items.splice(+d.rmitem, 1); renderEditor(); }
     else if (d.cover !== undefined) { coverFor = +d.cover; $('#cover').click(); }
+    else if (d.rmq !== undefined) { collect(); E.body.questions.splice(+d.rmq, 1); renderEditor(); }
+    else if (e.target.id === 'addq') { collect(); (E.body.questions ||= []).push({ q: '', options: ['', '', '', ''], correct: 0, comment: '' }); renderEditor(); }
     else if (e.target.id === 'additem') { collect(); E.body.items.push({ title: '', detail: '', note: '', link: '', media: '' }); renderEditor(); }
   };
 }
