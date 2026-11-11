@@ -56,7 +56,7 @@ function render() {
   const s = O.settings;
   const todo = [];
   if (!s.pinSet) todo.push('nastavit PIN');
-  if (!s.her_email || !s.brevoSet) todo.push('nastavit e-maily');
+  if (!s.her_email) todo.push('vyplnit svůj e-mail');
   if (!O.weeks[0].letter) todo.push('vložit první dopis');
   app.innerHTML = `<h1>Krabice malých dárků</h1>
     <p class="muted">Adresa pro manžela: <b>${esc(s.origin)}</b></p>
@@ -230,13 +230,11 @@ function paneSettings(el) {
       <p class="muted">${s.pinSet ? 'PIN je nastavený. Vyplň jen tehdy, když ho chceš změnit.' : 'Zatím není nastavený. Bez něj nepůjde otevřít žádný dopis.'}</p>
       <label>${s.pinSet ? 'Nový PIN' : 'PIN'} (4 až 8 číslic)</label><input type="text" inputmode="numeric" pattern="\\d{4,8}" id="pin" autocomplete="off">
       <div class="row"><button class="primary">Uložit PIN</button></div></form>
-    <form class="card" id="s-mail"><h2 style="margin-top:0">E-maily</h2>
-      <label>Tvůj e-mail<small>Sem chodí nedělní souhrn a zpráva o shořelém dopisu.</small></label><input type="email" id="her" value="${esc(s.her_email)}">
-      <label>Jeho e-mail<small>Sem chodí upozornění na nový dopis. Nech prázdné, pokud má stačit upozornění v telefonu.</small></label><input type="email" id="his" value="${esc(s.his_email)}">
-      <label>Adresa odesílatele<small>E-mail, který sis ověřila ve službě Brevo.</small></label><input type="email" id="sender" value="${esc(s.sender_email)}">
-      <label>Klíč API ze služby Brevo<small>${s.brevoSet ? 'Klíč je uložený. Vyplň jen při změně.' : 'Bez něj se e-maily neodesílají.'}</small></label><input type="password" id="brevo" autocomplete="off">
-      <label class="check"><input type="checkbox" id="smolder" ${s.smolder_remind ? 'checked' : ''}> V pátek mu připomenout, že dopis začíná doutnat</label>
-      <div class="row"><button class="primary">Uložit</button><button type="button" id="t-her">Poslat zkušební e-mail mně</button><button type="button" id="t-his">…a jemu</button></div></form>
+    <form class="card" id="s-mail"><h2 style="margin-top:0">E-mail pro tebe</h2>
+      <label>Tvůj e-mail<small>Sem chodí nedělní souhrn a zpráva o shořelém dopisu. Manžel dostává upozornění přímo v telefonu.</small></label><input type="email" id="her" value="${esc(s.her_email)}">
+      <p class="muted" style="margin-top:10px">Při prvním zkušebním e-mailu ti přijde zpráva od služby FormSubmit s potvrzovacím odkazem. Klikni na něj a zkoušku zopakuj.</p>
+      <label class="check"><input type="checkbox" id="smolder" ${s.smolder_remind ? 'checked' : ''}> V pátek mu v telefonu připomenout, že dopis začíná doutnat</label>
+      <div class="row"><button class="primary">Uložit</button><button type="button" id="t-her">Poslat zkušební e-mail</button></div></form>
     <div class="card"><h2 style="margin-top:0">Upozornění v telefonu</h2>
       <p class="muted">Zařízení s povoleným upozorněním: ${s.pushDevices}. Manžel si je zapne v aplikaci po přidání na plochu.</p>
       <div class="row"><button id="t-push">Poslat zkušební upozornění</button></div></div>
@@ -246,17 +244,16 @@ function paneSettings(el) {
       <div class="row"><button class="primary">Nastavit posun</button><button type="button" id="cron">Spustit hodinovou kontrolu teď</button><button type="button" class="danger" id="reset">Smazat zkušební data a vypnout posun</button></div></form>`;
   const save = async (body, msg = 'Uloženo.') => { try { await api('admin/settings', { method: 'POST', body }); toast(msg); await load(); } catch (e) { toast(e.message); } };
   $('#s-pin').onsubmit = (e) => { e.preventDefault(); if ($('#pin').value) save({ pin: $('#pin').value }, 'PIN uložen.'); };
-  const mail = () => ({ her_email: $('#her').value, his_email: $('#his').value, sender_email: $('#sender').value, brevo_key: $('#brevo').value, smolder_remind: $('#smolder').checked });
+  const mail = () => ({ her_email: $('#her').value, smolder_remind: $('#smolder').checked });
   $('#s-mail').onsubmit = (e) => { e.preventDefault(); save(mail()); };
-  const test = async (to) => {
+  const test = async () => {
     try {
       await api('admin/settings', { method: 'POST', body: mail() });
-      const r = await api('admin/test-email', { method: 'POST', body: { to } });
-      toast(r.ok ? 'Odesláno. Mrkni do schránky (i do spamu).' : r.error);
+      const r = await api('admin/test-email', { method: 'POST' });
+      toast(r.ok ? `Odesláno. Mrkni do schránky (i do spamu). ${r.message || ''}` : r.error);
     } catch (e) { toast(e.message); }
   };
-  $('#t-her').onclick = () => test('her');
-  $('#t-his').onclick = () => test('his');
+  $('#t-her').onclick = () => test();
   $('#t-push').onclick = async () => { const r = await api('admin/test-push', { method: 'POST' }); toast(r.total ? `Odesláno na ${r.sent} z ${r.total} zařízení.` : 'Žádné zařízení zatím nemá upozornění povolené.'); };
   $('#s-test').onsubmit = (e) => { e.preventDefault(); save({ shiftDays: +$('#shift').value || 0 }, 'Posun nastaven.'); };
   $('#cron').onclick = async () => { await api('admin/run-cron', { method: 'POST' }); toast('Kontrola proběhla.'); load(); };

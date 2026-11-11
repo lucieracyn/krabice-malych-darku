@@ -161,19 +161,23 @@ async function letterPayload(env, w, st) {
   };
 }
 
-// ---------- e-mail (Brevo) ----------
-async function sendEmail(s, to, subject, html) {
-  if (!s.brevo_key || !s.sender_email || !to) return { ok: false, error: 'E-mail není nastavený.' };
-  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
-    method: 'POST',
-    headers: { 'api-key': s.brevo_key, 'content-type': 'application/json', accept: 'application/json' },
-    body: JSON.stringify({
-      sender: { name: 'Krabice malých dárků', email: s.sender_email },
-      to: [{ email: to }], subject,
-      htmlContent: `<div style="font-family:Georgia,serif;font-size:16px;line-height:1.55;color:#3a2e2a;max-width:560px">${html}</div>`,
-    }),
-  });
-  return res.ok ? { ok: true } : { ok: false, error: `Brevo odpovědělo ${res.status}: ${(await res.text()).slice(0, 200)}` };
+// ---------- e-mail správkyni (FormSubmit, bez účtu a bez klíče) ----------
+// `fields` je tabulka „popisek: text“; služba z ní poskládá e-mail.
+async function sendEmail(s, subject, fields) {
+  if (!s.her_email) return { ok: false, error: 'Nejdřív vyplň svůj e-mail.' };
+  const origin = s.origin || 'https://krabice.invalid';
+  try {
+    const res = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(s.her_email)}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', accept: 'application/json', origin, referer: `${origin}/admin/` },
+      body: JSON.stringify({ _subject: subject, _template: 'box', _captcha: 'false', ...fields }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && String(data.success) === 'true') return { ok: true, message: data.message || '' };
+    return { ok: false, error: `Odeslání se nepovedlo (${res.status}). ${String(data.message || '').slice(0, 200)}` };
+  } catch (e) {
+    return { ok: false, error: 'Službu pro odesílání e-mailů se nepodařilo zastihnout.' };
+  }
 }
 async function pushAll(env, s, origin, payload) {
   const { results } = await env.DB.prepare('SELECT endpoint, sub FROM push_subs').all();
@@ -202,8 +206,6 @@ async function runCron(env) {
   if (w >= 1 && w <= WEEKS && statusOf(w, letters[w], state[w], now) !== 'empty' && !state[w]?.opened_at) {
     await once(`f:notified:${w}`, async () => {
       await pushAll(env, s, origin, { title: 'Krabice malých dárků', body: 'Přišel ti nový dopis. Otevři ho, než začne doutnat.' });
-      await sendEmail(s, s.his_email, 'Přišel ti nový dopis',
-        `<p>V Krabici malých dárků na tebe čeká nový dopis.</p><p>Otevři ho, než začne doutnat.</p>${origin ? `<p><a href="${origin}">Otevřít krabici</a></p>` : ''}`);
     });
     if (now >= smolderMs(w) && s.smolder_remind !== '0') {
       await once(`f:smolder:${w}`, () =>
@@ -213,58 +215,50 @@ async function runCron(env) {
   const prev = w - 1;
   if (prev >= 1 && prev <= WEEKS && statusOf(prev, letters[prev], state[prev], now) === 'burned') {
     await once(`f:burned:${prev}`, () =>
-      sendEmail(s, s.her_email, `Dopis č. ${prev} shořel`,
-        `<p>Dopis č. ${prev} „${esc(letters[prev].title || TYPE_NAMES[letters[prev].type])}“ zůstal neotevřený a shořel.</p>
-         <p>V kalendáři po něm zbyla hromádka popela. Manžel ho může uhasit živou vodou (má jí ${+(s.water ?? 1)}), nebo ho můžeš vzkřísit ty na své stránce${origin ? ` <a href="${origin}/admin/">${origin}/admin/</a>` : ''}.</p>`));
+      sendEmail(s, `Dopis č. ${prev} shořel`, {
+        'Co se stalo': `Dopis č. ${prev} „${letters[prev].title || TYPE_NAMES[letters[prev].type]}“ zůstal neotevřený a shořel. V kalendáři po něm zbyla hromádka popela.`,
+        'Co s tím': `Manžel ho může uhasit živou vodou (má jí ${+(s.water ?? 1)} ze ${WATER_MAX}). Vzkřísit ho můžeš i ty na stránce pro vkládání${origin ? `: ${origin}/admin/` : '.'}`,
+      }));
   }
   const p = pragueParts(now);
   if (w >= 1 && w <= WEEKS + 1 && p.weekday === 'Sun' && p.hour >= 20) {
-    await once(`f:digest:${w}`, async () => sendEmail(s, s.her_email, `Týdenní souhrn z krabice (týden ${Math.min(w, WEEKS)})`, await digestHtml(env, s, w, letters, state, now)));
+    await once(`f:digest:${w}`, async () => sendEmail(s, `Týdenní souhrn z krabice (týden ${Math.min(w, WEEKS)})`, await digestFields(env, s, w, letters, state, now)));
   }
 }
-async function digestHtml(env, s, w, letters, state, now) {
+async function digestFields(env, s, w, letters, state, now) {
   const since = releaseMs(Math.min(w, WEEKS));
   const [resp, wish] = await env.DB.batch([
     env.DB.prepare('SELECT week, kind, value, created_at FROM responses WHERE created_at >= ? ORDER BY week, id').bind(since),
     env.DB.prepare('SELECT title, detail, created_at FROM wishlist WHERE created_at >= ? ORDER BY id').bind(since),
   ]);
-  const out = [];
+  const out = {};
   if (w <= WEEKS) {
     const L = letters[w], st = statusOf(w, L, state[w], now);
-    const name = L ? `„${esc(L.title || TYPE_NAMES[L.type])}“` : '';
-    const line = {
+    const name = L ? `č. ${w} „${L.title || TYPE_NAMES[L.type]}“` : `č. ${w}`;
+    out['Dopis tohoto týdne'] = {
       empty: 'Na tento týden v krabici nic nebylo.',
-      opened: `Dopis č. ${w} ${name} otevřel ${fmtDate(state[w]?.opened_at || now)}${state[w]?.scorched ? ' – už doutnal, je očouzený' : ''}.`,
-      fresh: `Dopis č. ${w} ${name} zatím neotevřel.`,
-      smoldering: `Dopis č. ${w} ${name} zatím neotevřel a doutná. O půlnoci shoří.`,
-    }[st] || `Dopis č. ${w} ${name}: ${st}.`;
-    out.push(`<p><b>${line}</b></p>`);
+      opened: `Dopis ${name} otevřel ${fmtDate(state[w]?.opened_at || now)}${state[w]?.scorched ? '. Už doutnal, takže je očouzený.' : '.'}`,
+      fresh: `Dopis ${name} zatím neotevřel.`,
+      smoldering: `Dopis ${name} zatím neotevřel a doutná. O půlnoci shoří.`,
+    }[st] || `Dopis ${name}: ${st}.`;
   }
   const names = { done: 'splnil výzvu', redeem: 'uplatnil kupón', found: 'našel schovaný dárek', 'rsvp:yes': 'potvrdil pozvánku' };
-  if (!resp.results.length) out.push('<p>Tento týden nijak nereagoval.</p>');
-  else {
-    out.push('<p>Jeho odezva tento týden:</p><ul>');
-    const byWeek = {};
-    for (const r of resp.results) (byWeek[r.week] ||= []).push(r);
-    for (const [wk, rows] of Object.entries(byWeek)) {
-      const reacts = rows.filter((r) => r.kind === 'reaction').map((r) => r.value).join(' ');
-      out.push(`<li><b>Dopis č. ${wk}</b>${letters[wk]?.title ? ` (${esc(letters[wk].title)})` : ''}<ul>`);
-      if (reacts) out.push(`<li>Reakce: ${reacts}</li>`);
-      for (const r of rows.filter((r) => r.kind === 'action')) out.push(`<li>${esc(names[r.value] || r.value)}</li>`);
-      for (const r of rows.filter((r) => r.kind === 'note')) out.push(`<li>Napsal: „${esc(r.value).replace(/\n/g, '<br>')}“</li>`);
-      out.push('</ul></li>');
-    }
-    out.push('</ul>');
+  if (!resp.results.length) out['Jeho odezva'] = 'Tento týden nijak nereagoval.';
+  const byWeek = {};
+  for (const r of resp.results) (byWeek[r.week] ||= []).push(r);
+  for (const [wk, rows] of Object.entries(byWeek)) {
+    const parts = [];
+    const reacts = rows.filter((r) => r.kind === 'reaction').map((r) => r.value).join(' ');
+    if (reacts) parts.push(`Reakce: ${reacts}`);
+    for (const r of rows.filter((r) => r.kind === 'action')) parts.push(names[r.value] || r.value);
+    for (const r of rows.filter((r) => r.kind === 'note')) parts.push(`Napsal: „${r.value}“`);
+    out[`Odezva na dopis č. ${wk}${letters[wk]?.title ? ` (${letters[wk].title})` : ''}`] = parts.join(' | ');
   }
-  if (wish.results.length) {
-    out.push('<p>Nově ve wishlistu:</p><ul>');
-    for (const r of wish.results) out.push(`<li>${esc(r.title)}${r.detail ? ` – ${esc(r.detail)}` : ''}</li>`);
-    out.push('</ul>');
-  }
+  if (wish.results.length) out['Nově ve wishlistu'] = wish.results.map((r) => `${r.title}${r.detail ? ` – ${r.detail}` : ''}`).join(' | ');
   const missing = [w + 1, w + 2].filter((x) => x <= WEEKS && (!letters[x] || letters[x].draft));
-  if (missing.length) out.push(`<p><b>Pozor:</b> v krabici zatím chybí obsah pro týden ${missing.join(' a ')}.</p>`);
-  out.push(`<p style="color:#8a7a70">Živá voda: ${+(s.water ?? 1)} z ${WATER_MAX}.</p>`);
-  return out.join('\n');
+  if (missing.length) out['Pozor'] = `V krabici zatím chybí obsah pro týden ${missing.join(' a ')}.`;
+  out['Živá voda'] = `${+(s.water ?? 1)} ze ${WATER_MAX}`;
+  return out;
 }
 
 // ---------- API ----------
@@ -446,8 +440,7 @@ async function adminApi(req, env, s, url, seg, body, now) {
     return json({
       now, realNow: Date.now(), current: currentWeek(now), weeks, responses: resp.results, wishlist: wish.results,
       settings: {
-        pinSet: !!s.pin_hash, her_email: s.her_email || '', his_email: s.his_email || '', sender_email: s.sender_email || '',
-        brevoSet: !!s.brevo_key, smolder_remind: s.smolder_remind !== '0', shiftDays: Math.round((+(s.shift_ms || 0) / DAY) * 100) / 100,
+        pinSet: !!s.pin_hash, her_email: s.her_email || '', smolder_remind: s.smolder_remind !== '0', shiftDays: Math.round((+(s.shift_ms || 0) / DAY) * 100) / 100,
         water: +(s.water ?? 1), streak: +(s.streak || 0), pushDevices: subs.results[0].n, origin: s.origin || url.origin,
       },
     });
@@ -486,8 +479,7 @@ async function adminApi(req, env, s, url, seg, body, now) {
       await setS(env, 'pin_hash', await hashSecret(String(body.pin), s.secret));
       await setS(env, 'pin_len', String(body.pin).length);
     }
-    for (const k of ['her_email', 'his_email', 'sender_email']) if (body[k] !== undefined) await setS(env, k, String(body[k]).trim());
-    if (body.brevo_key) await setS(env, 'brevo_key', String(body.brevo_key).trim());
+    if (body.her_email !== undefined) await setS(env, 'her_email', String(body.her_email).trim());
     if (body.smolder_remind !== undefined) await setS(env, 'smolder_remind', body.smolder_remind ? 1 : 0);
     if (body.shiftDays !== undefined) await setS(env, 'shift_ms', Math.round((+body.shiftDays || 0) * DAY));
     if (body.water !== undefined) await setS(env, 'water', Math.max(0, Math.min(WATER_MAX, +body.water || 0)));
@@ -501,7 +493,7 @@ async function adminApi(req, env, s, url, seg, body, now) {
   }
   if (sub === 'test-email' && method === 'POST') {
     const fresh = await loadSettings(env);
-    return json(await sendEmail(fresh, body.to === 'his' ? fresh.his_email : fresh.her_email, 'Zkouška z Krabice malých dárků', '<p>E-maily z krabice fungují.</p>'));
+    return json(await sendEmail(fresh, 'Zkouška z Krabice malých dárků', { Zpráva: 'E-maily z krabice fungují. Sem ti bude chodit nedělní souhrn a zpráva o shořelém dopisu.' }));
   }
   if (sub === 'test-push' && method === 'POST') {
     return json(await pushAll(env, s, s.origin || url.origin, { title: 'Krabice malých dárků', body: 'Zkouška: upozornění fungují.' }));
