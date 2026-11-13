@@ -113,26 +113,39 @@ export const flaskIcon = (full = true) => `<svg class="flask" viewBox="0 0 40 56
   <rect x="13" y="1.5" width="14" height="5" rx="2" fill="currentColor" opacity="${full ? 1 : 0.45}"/>
 </svg>`;
 
-export function boxHtml() {
+// Obyčejná papírová krabice. Nahoře vykukují vršky dopisů, které v ní ještě zbývají.
+function topsSvg(weeks) {
+  return weeks.slice().sort((a, b) => b - a).map((w) => {
+    const s = styleOf(w), k = w - 1;
+    const row = 3 - Math.floor(k / 13), col = (k * 5) % 13;
+    const x = 31 + col * 14.6 + (row % 2) * 7 + ((w * 7) % 4), y = -14 + row * 11 + ((w * 13) % 5);
+    const f = FLAPS[s.flapKey];
+    return `<g transform="translate(${x.toFixed(1)} ${y}) rotate(${((w * 37) % 7) - 3} 30 50) scale(.2)">
+      <rect width="300" height="260" rx="12" fill="${s.body}" stroke="#000" stroke-opacity=".16" stroke-width="4"/>
+      <path d="${f.d}" fill="${s.flap}" stroke="#000" stroke-opacity=".16" stroke-width="4"/>
+      <circle cx="150" cy="${Math.max(f.tip - 14, 40)}" r="18" fill="${s.seal}"/></g>`;
+  }).join('');
+}
+export function boxHtml(remaining = []) {
   return `
   <div class="box">
-    <svg class="box-back" viewBox="0 0 320 210"><rect x="26" y="34" width="268" height="60" rx="6" fill="#3d1f24"/></svg>
+    <svg class="box-back" viewBox="0 0 320 210">
+      <path d="M34,30 L286,30 L296,2 L24,2 Z" fill="#c7a273"/><path d="M34,30 L286,30 L296,2 L24,2 Z" fill="none" stroke="#8c6a43" stroke-opacity=".5"/>
+      <rect x="26" y="28" width="268" height="80" fill="#7a5a3a"/>
+      <rect x="26" y="28" width="268" height="80" fill="#000" opacity=".18"/>
+      ${topsSvg(remaining)}
+    </svg>
     <div class="box-slot"></div>
     <svg class="box-front" viewBox="0 0 320 210">
-      <defs><linearGradient id="bx" x1="0" x2="1"><stop offset="0" stop-color="#a23b45"/><stop offset=".5" stop-color="#b9485a"/><stop offset="1" stop-color="#9a3540"/></linearGradient></defs>
-      <rect x="26" y="52" width="268" height="150" rx="8" fill="url(#bx)"/>
-      <rect x="26" y="52" width="268" height="14" fill="#000" opacity=".16"/>
-      <rect x="142" y="52" width="36" height="150" fill="#f1d9a7"/>
-      <rect x="142" y="52" width="36" height="150" fill="none" stroke="#000" stroke-opacity=".08"/>
-      <g fill="#fff" opacity=".1"><circle cx="70" cy="110" r="5"/><circle cx="104" cy="160" r="5"/><circle cx="60" cy="176" r="5"/><circle cx="222" cy="104" r="5"/><circle cx="262" cy="150" r="5"/><circle cx="214" cy="178" r="5"/><circle cx="110" cy="92" r="5"/><circle cx="254" cy="90" r="5"/></g>
-    </svg>
-    <svg class="box-lid" viewBox="0 0 320 210">
-      <defs><linearGradient id="ld" x1="0" x2="1"><stop offset="0" stop-color="#b3434f"/><stop offset=".5" stop-color="#cb5568"/><stop offset="1" stop-color="#aa3d49"/></linearGradient></defs>
-      <rect x="14" y="30" width="292" height="44" rx="8" fill="url(#ld)"/>
-      <rect x="140" y="30" width="40" height="44" fill="#f1d9a7"/>
-      <path d="M160,30 C128,-8 92,2 104,22 C112,34 140,32 160,30 Z" fill="#f1d9a7" stroke="#c9a96b" stroke-width="1.5"/>
-      <path d="M160,30 C192,-8 228,2 216,22 C208,34 180,32 160,30 Z" fill="#f1d9a7" stroke="#c9a96b" stroke-width="1.5"/>
-      <circle cx="160" cy="28" r="9" fill="#e6c88f" stroke="#c9a96b" stroke-width="1.5"/>
+      <defs><linearGradient id="cb" x1="0" x2="1"><stop offset="0" stop-color="#b98f5e"/><stop offset=".5" stop-color="#cba476"/><stop offset="1" stop-color="#b38957"/></linearGradient>
+      <pattern id="corr" width="5" height="6" patternUnits="userSpaceOnUse"><path d="M0,6 L2.5,0 L5,6" fill="none" stroke="#7d5c38" stroke-width="1"/></pattern></defs>
+      <path d="M26,54 L4,74 L4,98 L26,84 Z" fill="#a98152"/><path d="M294,54 L316,74 L316,98 L294,84 Z" fill="#a98152"/>
+      <rect x="26" y="52" width="268" height="150" rx="3" fill="url(#cb)"/>
+      <rect x="26" y="52" width="268" height="6" fill="#e0c39a"/><rect x="26" y="52" width="268" height="6" fill="url(#corr)" opacity=".7"/>
+      <path d="M40,58 H280 L270,92 H50 Z" fill="#b08655"/><path d="M50,92 H270" stroke="#000" stroke-opacity=".18" stroke-width="2"/>
+      <rect x="141" y="92" width="38" height="110" fill="#e8d7b5" opacity=".55"/>
+      <g stroke="#6b4c2c" stroke-opacity=".12" stroke-width="1"><path d="M26,120 H294 M26,150 H294 M26,180 H294"/></g>
+      <path d="M258,176 c-7,-5 -11,-9 -11,-13.5 a6,6 0 0 1 11,-2.5 a6,6 0 0 1 11,2.5 c0,4.5 -4,8.5 -11,13.5 z" fill="none" stroke="#7b4a34" stroke-width="2.2" stroke-linejoin="round" opacity=".7"/>
     </svg>
     <div class="box-smoke smoke"><b></b><b></b><b></b></div>
   </div>`;

@@ -165,7 +165,7 @@ function renderHome({ flyIn = false } = {}) {
   }
   v.innerHTML = `<section class="home">
     <header class="hero"><p class="eyebrow">${eyebrow}</p><h1>${title}</h1></header>
-    <div class="scene${avail ? ' ready' : ''}${scorched ? ' smoldering' : ''}${flyIn && avail ? ' fly' : ''}">${boxHtml()}</div>
+    <div class="scene${avail ? ' ready' : ''}${scorched ? ' smoldering' : ''}${flyIn && avail ? ' fly' : ''}">${boxHtml(S.weeks.filter((w) => w.status === 'future').map((w) => w.week))}</div>
     <div class="cta">${extra}</div>
     <div id="nudge"></div>
   </section>`;
@@ -566,7 +566,7 @@ async function runPreview() {
   const v = $('#view');
   const play = () => {
     v.innerHTML = `<section class="home"><header class="hero"><p class="eyebrow">Náhled · dopis č. ${PREVIEW}</p><h1>${L.scorched ? 'Dopis začíná doutnat' : 'Něco na tebe čeká'}</h1></header>
-      <div class="scene ready${L.scorched ? ' smoldering' : ''}">${boxHtml()}</div><div class="cta"><button class="btn primary" id="go">Otevřít krabici</button></div></section>`;
+      <div class="scene ready${L.scorched ? ' smoldering' : ''}">${boxHtml(Array.from({ length: 52 - PREVIEW }, (_, i) => PREVIEW + 1 + i))}</div><div class="cta"><button class="btn primary" id="go">Otevřít krabici</button></div></section>`;
     $('.box-slot', v).innerHTML = envelopeHtml(PREVIEW, { scorched: L.scorched });
     $('#go').onclick = async () => {
       const scene = $('.scene'), cta = $('.cta');
