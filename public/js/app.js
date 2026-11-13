@@ -165,7 +165,7 @@ function renderHome({ flyIn = false } = {}) {
   }
   v.innerHTML = `<section class="home">
     <header class="hero"><p class="eyebrow">${eyebrow}</p><h1>${title}</h1></header>
-    <div class="scene${avail ? ' ready' : ''}${scorched ? ' smoldering' : ''}${flyIn && avail ? ' fly' : ''}">${boxHtml(S.weeks.filter((w) => w.status === 'future').map((w) => w.week))}</div>
+    <div class="scene${avail ? ' ready' : ''}${scorched ? ' smoldering' : ''}${flyIn && avail ? ' fly' : ''}">${boxHtml(S.weeks.filter((w) => w.status === 'future').map((w) => w.week), S.weeks.filter((w) => w.status === 'burned').map((w) => w.week))}</div>
     <div class="cta">${extra}</div>
     <div id="nudge"></div>
   </section>`;

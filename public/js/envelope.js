@@ -114,11 +114,16 @@ export const flaskIcon = (full = true) => `<svg class="flask" viewBox="0 0 40 56
 </svg>`;
 
 // Obyčejná papírová krabice. Nahoře vykukují vršky dopisů, které v ní ještě zbývají.
-function topsSvg(weeks) {
-  return weeks.slice().sort((a, b) => b - a).map((w) => {
+function topsSvg(weeks, burned) {
+  return [...weeks, ...burned].sort((a, b) => b - a).map((w) => {
     const s = styleOf(w), k = w - 1;
     const row = 3 - Math.floor(k / 13), col = (k * 5) % 13;
     const x = 31 + col * 14.6 + (row % 2) * 7 + ((w * 7) % 4), y = -14 + row * 11 + ((w * 13) % 5);
+    // Ze shořelého dopisu zůstane v krabici jen ohořelý růžek.
+    if (burned.includes(w)) return `<g transform="translate(${x.toFixed(1)} ${y + 5}) rotate(${((w * 37) % 15) - 7} 30 30) scale(.2)">
+      <path d="M0,260 V96 L28,70 L52,104 L86,40 L118,92 L150,58 L176,110 L214,74 L236,120 L262,96 L300,134 V260 Z" fill="#2a1c14"/>
+      <path d="M0,96 L28,70 L52,104 L86,40 L118,92 L150,58 L176,110 L214,74 L236,120 L262,96 L300,134" fill="none" stroke="#d9772e" stroke-width="7" stroke-linejoin="round" opacity=".75"/>
+      <path d="M0,260 V150 L300,180 V260 Z" fill="${s.body}" opacity=".35"/></g>`;
     const f = FLAPS[s.flapKey];
     return `<g transform="translate(${x.toFixed(1)} ${y}) rotate(${((w * 37) % 7) - 3} 30 50) scale(.2)">
       <rect width="300" height="260" rx="12" fill="${s.body}" stroke="#000" stroke-opacity=".16" stroke-width="4"/>
@@ -126,14 +131,14 @@ function topsSvg(weeks) {
       <circle cx="150" cy="${Math.max(f.tip - 14, 40)}" r="18" fill="${s.seal}"/></g>`;
   }).join('');
 }
-export function boxHtml(remaining = []) {
+export function boxHtml(remaining = [], burned = []) {
   return `
   <div class="box">
     <svg class="box-back" viewBox="0 0 320 210">
       <path d="M34,30 L286,30 L296,2 L24,2 Z" fill="#c7a273"/><path d="M34,30 L286,30 L296,2 L24,2 Z" fill="none" stroke="#8c6a43" stroke-opacity=".5"/>
       <rect x="26" y="28" width="268" height="80" fill="#7a5a3a"/>
       <rect x="26" y="28" width="268" height="80" fill="#000" opacity=".18"/>
-      ${topsSvg(remaining)}
+      ${topsSvg(remaining, burned)}
     </svg>
     <div class="box-slot"></div>
     <svg class="box-front" viewBox="0 0 320 210">
