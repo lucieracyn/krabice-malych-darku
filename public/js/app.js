@@ -209,10 +209,12 @@ async function openFlow(wk) {
 }
 
 async function openArchived(week) {
+  const pin = await askPin(`PIN k dopisu č. ${week}`);
+  if (!pin) return;
   try {
-    showSheet(await api(`letter/${week}`));
+    if (!S.session) await refresh();
+    showSheet(await api(`letter/${week}`, { method: 'POST', body: { pin } }));
   } catch (e) {
-    if (e.status === 401 && (await ensureSession())) return openArchived(week);
     toast(e.message);
   }
 }

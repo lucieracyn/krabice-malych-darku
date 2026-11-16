@@ -334,6 +334,12 @@ async function api(req, env, ctx, url) {
     const w = +seg[1];
     const st = await env.DB.prepare('SELECT * FROM state WHERE week = ?').bind(w).first();
     if (!st?.opened_at && !isAdmin) return fail(403, 'Tenhle dopis ještě není otevřený.');
+    // Každé další čtení chce PIN znovu (správkyně v náhledu ne).
+    if (!isAdmin) {
+      if (method !== 'POST') return fail(403, 'Zadej PIN.');
+      const pin = await checkPin(env, s, body.pin);
+      if (!pin.ok) return fail(403, pin.error);
+    }
     const p = await letterPayload(env, w, st);
     return p ? json(p) : fail(404, 'Dopis nenalezen.');
   }
